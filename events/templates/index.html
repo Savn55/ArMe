@@ -1,0 +1,767 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Mapper</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #header {
+            background-color: #4285F4;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        #search-container {
+            padding: 15px;
+            background-color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+        }
+        #search-input {
+            width: 60%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #map {
+            height: calc(100vh - 130px);
+            width: 100%;
+        }
+        .info-window {
+            max-width: 300px;
+        }
+        .info-window h3 {
+            margin-top: 0;
+            color: #4285F4;
+        }
+        .info-window p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Event Mapper</h1>
+    </div>
+    
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search for events...">
+    </div>
+    
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let markers = [];
+        let userLocation = null;
+
+        // Initialize the map
+        function initMap() {
+            // Default center (will be updated with user's location if available)
+            const defaultCenter = { lat: 40.7128, lng: -74.0060 }; // New York
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: defaultCenter,
+            });
+            
+            // Try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        // Center map on user's location
+                        map.setCenter(userLocation);
+                        
+                        // Add a marker for user's location
+                        new google.maps.Marker({
+                            position: userLocation,
+                            map: map,
+                            title: "Your Location",
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 10,
+                                fillColor: "#4285F4",
+                                fillOpacity: 1,
+                                strokeWeight: 2,
+                                strokeColor: "#FFFFFF",
+                            }
+                        });
+                    },
+                    (error) => {
+                        console.error("Error getting user location:", error);
+                    }
+                );
+            }
+            
+            // Set up search input
+            const searchInput = document.getElementById("search-input");
+            searchInput.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    searchEvents(searchInput.value);
+                }
+            });
+        }
+        
+        // Search for events
+        function searchEvents(query) {
+            clearMarkers();
+            
+            fetch(`/api/search-events/?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        displayEvents(events);
+                    } else {
+                        // If no results, search for nearby events
+                        searchNearbyEvents();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching events:", error);
+                });
+        }
+        
+        // Search for nearby events
+        function searchNearbyEvents() {
+            if (!userLocation) {
+                alert("Unable to find your location. Please allow location access or try a different search.");
+                return;
+            }
+            
+            fetch(`/api/nearby-events/?latitude=${userLocation.lat}&longitude=${userLocation.lng}&radius=10`)
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        alert("No events found for your search. Showing nearby events instead.");
+                        displayEvents(events);
+                    } else {
+                        alert("No events found nearby.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching nearby events:", error);
+                });
+        }
+        
+        // Display events on the map
+        function displayEvents(events) {
+            const bounds = new google.maps.LatLngBounds();
+            
+            events.forEach(event => {
+                if (event.latitude && event.longitude) {
+                    const position = {
+                        lat: event.latitude,
+                        lng: event.longitude
+                    };
+                    
+                    // Create marker
+                    const marker = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        title: event.name
+                    });
+                    
+                    // Create info window content
+                    const contentString = `
+                        <div class="info-window">
+                            <h3>${event.name}</h3>
+                            <p>${event.description}</p>
+                            <p><strong>Address:</strong> ${event.full_address}</p>
+                        </div>
+                    `;
+                    
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: contentString
+                    });
+                    
+                    // Add click listener to marker
+                    marker.addListener("click", () => {
+                        infoWindow.open(map, marker);
+                    });
+                    
+                    // Add marker to array for later reference
+                    markers.push(marker);
+                    
+                    // Extend bounds to include this marker
+                    bounds.extend(position);
+                }
+            });
+            
+            // Adjust map to fit all markers
+            if (markers.length > 0) {
+                map.fitBounds(bounds);
+                
+                // If only one marker, zoom in a bit
+                if (markers.length === 1) {
+                    map.setZoom(14);
+                }
+            }
+        }
+        
+        // Clear all markers from the map
+        function clearMarkers() {
+            markers.forEach(marker => {
+                marker.setMap(null);
+            });
+            markers = [];
+        }
+    </script>
+    
+    Load Google Maps JavaScript API with your frontend API key -->
+    <!-- <script src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_API_KEY }}&callback=initMap" async defer></script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Mapper</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #header {
+            background-color: #4285F4;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        #search-container {
+            padding: 15px;
+            background-color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+        }
+        #search-input {
+            width: 60%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #map {
+            height: calc(100vh - 130px);
+            width: 100%;
+        }
+        .info-window {
+            max-width: 300px;
+        }
+        .info-window h3 {
+            margin-top: 0;
+            color: #4285F4;
+        }
+        .info-window p {
+            margin: 5px 0;
+        }
+/*initial 
+category codes*/
+        #filter-container {
+            padding: 10px;
+            background-color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .category-filter {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .category-filter.active {
+            background-color: #4285F4;
+            color: white;
+            border-color: #4285F4;
+        }
+        
+        .category-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #4285F4;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Event Mapper</h1>
+    </div>
+    
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Search for events...">
+    </div>
+    
+    <!--initial 
+    category codes-->
+    <div id="filter-container">
+        <div class="category-filter active" data-category="ALL">All</div>
+        <div class="category-filter" data-category="FOOD">Food</div>
+        <div class="category-filter" data-category="ENTERTAINMENT">Entertainment</div>
+        <div class="category-filter" data-category="SALES">Sales</div>
+        <div class="category-filter" data-category="SPORTS">Sports</div>
+        <div class="category-filter" data-category="EDUCATION">Education</div>
+        <div class="category-filter" data-category="TECHNOLOGY">Technology</div>
+        <div class="category-filter" data-category="HEALTH">Health</div>
+        <div class="category-filter" data-category="OTHER">Other</div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let markers = [];
+        let userLocation = null;
+        let allEvents = []; //initial 
+        // category codes
+        let activeCategory = "ALL"; //initial 
+        let searchTime = null; //category filters
+        // category codes
+
+        // Initialize the map
+        function initMap() {
+            // Default center (will be updated with user's location if available)
+            const defaultCenter = { lat: 40.7128, lng: -74.0060 }; // New York
+            
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: defaultCenter,
+            });
+            
+            // Try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        // Center map on user's location
+                        map.setCenter(userLocation);
+                        
+                        // Add a marker for user's location
+                        new google.maps.Marker({
+                            position: userLocation,
+                            map: map,
+                            title: "Your Location",
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 10,
+                                fillColor: "#4285F4",
+                                fillOpacity: 1,
+                                strokeWeight: 2,
+                                strokeColor: "#FFFFFF",
+                            }
+                        });
+                    },
+                    (error) => {
+                        console.error("Error getting user location:", error);
+                    }
+                );
+            }
+            
+            // Set up search input
+            const searchInput = document.getElementById("search-input");
+            searchInput.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    searchEvents(searchInput.value);
+                }
+            });
+        }
+
+        //initial 
+        // category codes
+        const categoryFilters = document.querySelectorAll('.category-filter');
+            categoryFilters.forEach(filter => {
+                filter.addEventListener('click', function() {
+                    // Remove active class from all filters
+                    categoryFilters.forEach(f => f.classList.remove('active'));
+                    
+                    // Add active class to clicked filter
+                    this.classList.add('active');
+                    
+                    // Update active category
+                    const newCategory = this.getAttribute('data-category');//category filters - newCategory was activeCategory
+                    
+                    //category filters 
+                    // Only trigger a new search if the category actually changed
+                    if (newCategory !== activeCategory) {
+                        activeCategory = newCategory;
+                        
+                        // Get current search query
+                        const searchQuery = document.getElementById("search-input").value.trim();
+                        
+                        // Search with the current query (or empty string if no query)
+                        searchEvents(searchQuery);
+                    }
+                    /*
+                    // Filter displayed events
+                    if (allEvents.length > 0) {
+                        filterAndDisplayEvents();
+                    }
+                    //category conditions
+                            // Get current search query
+                    const searchQuery = document.getElementById("search-input").value.trim();
+                    
+                    if (searchQuery) {
+                        // If there's a search query, search with both query and category
+                        searchEvents(searchQuery);
+                    } else {
+                        // If no search query, just filter by category
+                        searchEvents('');
+                    }
+                    */
+                });
+            });
+        /*
+        // Search for events
+        function searchEvents(query) {
+            clearMarkers();
+            
+            fetch(`/api/search-events/?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(events => {
+                    allEvents = events; //initial 
+                    // category codes
+                    if (events.length > 0) {
+                        //displayEvents(events);
+                        filterAndDisplayEvents(); //initial 
+                        // category codes
+                    } else {
+                        // If no results, search for nearby events
+                        searchNearbyEvents();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching events:", error);
+                });
+        }
+        */
+        
+        //initial 
+        // category codes
+        function searchEvents(query) {
+            clearMarkers();
+    
+        let url = `/api/search-events/?query=${encodeURIComponent(query)}`;
+        if (activeCategory !== "ALL") {
+            url += `&category=${activeCategory}`;
+        }
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(events => {
+                //category conditions
+                allEvents = events;
+                if (events.length > 0) {
+                // We found events matching both query and category (or just category if no query)
+                // allEvents = events;
+                displayEvents(events);
+            } else if (activeCategory !== "ALL" && query) {
+                // No results for this category + query combination
+                // Fall back to searching all categories with the same query
+                searchAllCategories(query);
+            } else if (activeCategory !== "ALL") {
+                // No events in this category at all
+                alert(`No ${activeCategory.toLowerCase()} events found. Try a different category.`);
+            } else {
+                // No results and either no query or already searching all categories
+                // Fall back to nearby events
+                searchNearbyEvents();
+            }
+        })
+            /*    
+                allEvents = events;
+                if (events.length > 0) {
+                    filterAndDisplayEvents();
+                } else {
+                    // If no results, search for nearby events
+                    searchNearbyEvents();
+                }
+            })*/
+            .catch(error => {
+                console.error("Error searching events:", error);
+            });
+}
+        // category conditions
+        // Search across all categories when category-specific search yields no results
+        function searchAllCategories(query) {
+            //category filter with query
+            // Temporarily set activeCategory to "ALL" for this search
+            const previousCategory = activeCategory;
+            activeCategory = "ALL";
+            
+            // Update the UI to show "All" as selected
+            const categoryFilters = document.querySelectorAll('.category-filter');
+            categoryFilters.forEach(filter => {
+                if (filter.getAttribute('data-category') === "ALL") {
+                    filter.classList.add('active');
+                } else {
+                    filter.classList.remove('active');
+                }
+            });
+            
+            fetch(`/api/search-events/?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        allEvents = events;
+                        displayEvents(events);
+                    } else {
+                        // If still no results, search for nearby events
+                        searchNearbyEvents();
+                        
+                        // Reset category to previous if no results found
+                        activeCategory = previousCategory;
+                        
+                        // Update UI to reflect the reset
+                        categoryFilters.forEach(filter => {
+                            if (filter.getAttribute('data-category') === previousCategory) {
+                                filter.classList.add('active');
+                            } else {
+                                filter.classList.remove('active');
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching all categories:", error);
+                });
+        }
+            /*category filter with query
+            
+            fetch(`/api/search-events/?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        alert(`No ${activeCategory.toLowerCase()} events found for "${query}". Showing all matching events instead.`);
+                        allEvents = events;
+                        displayEvents(events);
+                    } else {
+                        // If still no results, search for nearby events
+                        searchNearbyEvents();
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching all categories:", error);
+                });
+        }
+*/
+         // Filter events by category and display them
+        function filterAndDisplayEvents() {
+            clearMarkers();
+            
+            // Filter events by category if not "ALL"
+            const filteredEvents = activeCategory === "ALL" 
+                ? allEvents 
+                : allEvents.filter(event => event.category === activeCategory);
+            
+            if (filteredEvents.length > 0) {
+                displayEvents(filteredEvents);
+            } else {
+                alert(`No ${activeCategory.toLowerCase()} events found for your search.`);
+            }
+        }
+        //initial 
+        // category codes
+            // Search for nearby events
+        function searchNearbyEvents() {
+            if (!userLocation) {
+                alert("Unable to find your location. Please allow location access or try a different search.");
+                return;
+            }
+    
+        let url = `/api/nearby-events/?latitude=${userLocation.lat}&longitude=${userLocation.lng}&radius=150`;
+        if (activeCategory !== "ALL") {
+            url += `&category=${activeCategory}`;
+        }
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(events => {
+                allEvents = events;
+                if (events.length > 0) {
+                    alert("No events found for your search. Showing nearby events instead.");
+                    filterAndDisplayEvents();
+                } else {
+                    alert("No events found nearby.");
+                }
+            })
+            .catch(error => {
+                console.error("Error searching nearby events:", error);
+            });
+}
+        
+        // Display events on the map
+        function displayEvents(events) {
+            const bounds = new google.maps.LatLngBounds();
+            
+            events.forEach(event => {
+                if (event.latitude && event.longitude) {
+                    const position = {
+                        lat: event.latitude,
+                        lng: event.longitude
+                    };
+                    
+                    // Create marker
+                    const marker = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        title: event.name
+                    });
+                    
+                    // Create info window content
+                    const contentString = `
+                        <div class="info-window">
+                            <span class="category-badge">${event.category_display || event.category}</span>
+                            <h3>${event.name}</h3>
+                            <p>${event.description}</p>
+                            <p><strong>Address:</strong> ${event.full_address}</p>
+                        </div>
+                    `;
+                    
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: contentString
+                    });
+                    
+                    // Add click listener to marker
+                    marker.addListener("click", () => {
+                        infoWindow.open(map, marker);
+                    });
+                    
+                    // Add marker to array for later reference
+                    markers.push(marker);
+                    
+                    // Extend bounds to include this marker
+                    bounds.extend(position);
+                }
+            });
+            
+            // Adjust map to fit all markers
+            if (markers.length > 0) {
+                map.fitBounds(bounds);
+                
+                // If only one marker, zoom in a bit
+                if (markers.length === 1) {
+                    map.setZoom(14);
+                }
+            }
+        }
+
+        /*
+        // Search for nearby events
+        function searchNearbyEvents() {
+            if (!userLocation) {
+                alert("Unable to find your location. Please allow location access or try a different search.");
+                return;
+            }
+            
+            fetch(`/api/nearby-events/?latitude=${userLocation.lat}&longitude=${userLocation.lng}&radius=10`)
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        alert("No events found for your search. Showing nearby events instead.");
+                        displayEvents(events);
+                    } else {
+                        alert("No events found nearby.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error searching nearby events:", error);
+                });
+        }
+        
+        // Display events on the map
+        function displayEvents(events) {
+            const bounds = new google.maps.LatLngBounds();
+            
+            events.forEach(event => {
+                if (event.latitude && event.longitude) {
+                    const position = {
+                        lat: event.latitude,
+                        lng: event.longitude
+                    };
+                    
+                    // Create marker
+                    const marker = new google.maps.Marker({
+                        position: position,
+                        map: map,
+                        title: event.name
+                    });
+                    
+                    // Create info window content
+                    const contentString = `
+                        <div class="info-window">
+                            <h3>${event.name}</h3>
+                            <p>${event.description}</p>
+                            <p><strong>Address:</strong> ${event.full_address}</p>
+                        </div>
+                    `;
+                    
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: contentString
+                    });
+                    
+                    // Add click listener to marker
+                    marker.addListener("click", () => {
+                        infoWindow.open(map, marker);
+                    });
+                    
+                    // Add marker to array for later reference
+                    markers.push(marker);
+                    
+                    // Extend bounds to include this marker
+                    bounds.extend(position);
+                }
+            });
+            
+            // Adjust map to fit all markers
+            if (markers.length > 0) {
+                map.fitBounds(bounds);
+                
+                // If only one marker, zoom in a bit
+                if (markers.length === 1) {
+                    map.setZoom(14);
+                }
+            }
+        }
+        */
+
+
+        // Clear all markers from the map
+        function clearMarkers() {
+            markers.forEach(marker => {
+                marker.setMap(null);
+            });
+            markers = [];
+        }
+    </script>
+    
+    <!-- Load Google Maps JavaScript API with your frontend API key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+</body>
+</html>
