@@ -255,6 +255,26 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+        #message-container {
+        padding: 10px 15px;
+        background-color: #f8f8f8;
+        color: #555;
+        font-size: 14px;
+        border-bottom: 1px solid #eee;
+        display: none; /* Hidden by default */
+        }
+        
+        #message-container.error {
+            color: #d9534f;
+        }
+        
+        #message-container.info {
+            color: #5bc0de;
+        }
+        
+        #message-container.success {
+            color: #5cb85c;
+        }
         #map {
             height: calc(100vh - 130px);
             width: 100%;
@@ -313,6 +333,11 @@ category codes*/
     
     <div id="search-container">
         <input type="text" id="search-input" placeholder="Search for events...">
+    </div>
+
+    <!-- Add this message container below the search bar -->
+    <div id="message-container">
+        <!-- Messages will be displayed here -->
     </div>
     
     <!--initial 
@@ -437,7 +462,11 @@ category codes*/
                     */
                 });
             });
-        /*
+        
+        
+        
+        
+            /*
         // Search for events
         function searchEvents(query) {
             clearMarkers();
@@ -462,10 +491,27 @@ category codes*/
         }
         */
         
+        // Function to show messages
+        function showMessage(message, type = 'info') {
+            const messageContainer = document.getElementById('message-container');
+            messageContainer.textContent = message;
+            messageContainer.className = ''; // Clear previous classes
+            messageContainer.classList.add(type);
+            messageContainer.style.display = 'block';
+        }
+
+        // Function to hide message
+        function hideMessage() {
+            const messageContainer = document.getElementById('message-container');
+            messageContainer.style.display = 'none';
+        }
+
+
         //initial 
         // category codes
         function searchEvents(query) {
             clearMarkers();
+            hideMessage();// Hide any previous messages
     
         let url = `/api/search-events/?query=${encodeURIComponent(query)}`;
         if (activeCategory !== "ALL") {
@@ -478,22 +524,25 @@ category codes*/
                 //category conditions
                 allEvents = events;
                 if (events.length > 0) {
-                // We found events matching both query and category (or just category if no query)
-                // allEvents = events;
-                displayEvents(events);
-            } else if (activeCategory !== "ALL" && query) {
-                // No results for this category + query combination
-                // Fall back to searching all categories with the same query
-                searchAllCategories(query);
-            } else if (activeCategory !== "ALL") {
-                // No events in this category at all
-                alert(`No ${activeCategory.toLowerCase()} events found. Try a different category.`);
-            } else {
-                // No results and either no query or already searching all categories
-                // Fall back to nearby events
-                searchNearbyEvents();
-            }
-        })
+                    // We found events matching both query and category (or just category if no query)
+                    // allEvents = events;_
+                    displayEvents(events);
+                    showMessage(`Found ${events.length} events`, 'success');
+                } else if (activeCategory !== "ALL" && query) {
+                    // No results for this category + query combination
+                    // Fall back to searching all categories with the same query
+                    searchAllCategories(query);
+                } else if (activeCategory !== "ALL") {
+                    // No events in this category at all
+                    showMessage(`0 ${activeCategory.toLowerCase()} events found`, 'error');
+                    // fetch all events to display on map
+                    fetchAllEvents();
+                } else {
+                    // No results and either no query or already searching all categories
+                    // Fall back to nearby events
+                    searchNearbyEvents();
+                }
+            })
             /*    
                 allEvents = events;
                 if (events.length > 0) {
@@ -507,6 +556,24 @@ category codes*/
                 console.error("Error searching events:", error);
             });
 }
+
+                // Fetch all events (used when no events match the selected category)
+        function fetchAllEvents() {
+            fetch('/api/search-events/')
+                .then(response => response.json())
+                .then(events => {
+                    if (events.length > 0) {
+                        // Display all events but don't update allEvents
+                        displayEvents(events);
+                    } else {
+                        // If somehow there are no events at all in the database
+                        showMessage("No events found in the database", 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching all events:", error);
+                });
+        }
         // category conditions
         // Search across all categories when category-specific search yields no results
         function searchAllCategories(query) {
